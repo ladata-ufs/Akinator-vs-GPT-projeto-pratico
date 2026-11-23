@@ -1,0 +1,1 @@
+# Akinator-vs-GPT-projeto-pratico
