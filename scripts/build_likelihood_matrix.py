@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Gera a matriz de verossimilhança P(E | H) em data/processed/perguntas_matriz.json
-a partir dos dados brutos de docentes e disciplinas em data/raw/.
+usando exclusivamente a mesma base de conhecimento da abordagem LLM + RAG
+(`llm/base_de_conhecimento_rag_docentes_dcomp_ufs.md`).
 """
 
 from __future__ import annotations
 
-import csv
 import json
 import re
 import unicodedata
@@ -14,8 +14,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-RAW_DOCENTES = REPO_ROOT / "data" / "raw" / "docentes_dcomp_ufs.csv"
-RAW_DISCIPLINAS = REPO_ROOT / "data" / "raw" / "disciplinas_dcomp_ufs.csv"
+RAG_BASE = REPO_ROOT / "llm" / "base_de_conhecimento_rag_docentes_dcomp_ufs.md"
 OUT_MATRIZ = REPO_ROOT / "data" / "processed" / "perguntas_matriz.json"
 OUT_WEB_JS = REPO_ROOT / "web" / "matriz.js"
 
@@ -29,85 +28,73 @@ def normalizar_texto(texto: str) -> str:
     return re.sub(r"\s+", " ", sem_acento).strip().lower()
 
 
-def carregar_dados_brutos(
-    docentes_csv: Path = RAW_DOCENTES,
-    disciplinas_csv: Path = RAW_DISCIPLINAS,
-) -> tuple[list[dict[str, str]], dict[str, list[dict[str, str]]]]:
-    """Carrega os 33 docentes e agrupa as disciplinas ministradas por SIAPE."""
-    with docentes_csv.open(encoding="utf-8", newline="") as f:
-        docentes = list(csv.DictReader(f))
-
-    disciplinas_por_siape: dict[str, list[dict[str, str]]] = {d["siape"]: [] for d in docentes}
-    with disciplinas_csv.open(encoding="utf-8", newline="") as f:
-        for row in csv.DictReader(f):
-            siape = row["siape"]
-            if siape in disciplinas_por_siape:
-                disciplinas_por_siape[siape].append(row)
-
-    return docentes, disciplinas_por_siape
+def _extrair_campo(bloco: str, rotulo: str) -> str:
+    m = re.search(rf"-\s+\*\*{re.escape(rotulo)}:\*\*\s*(.+)", bloco)
+    return m.group(1).strip() if m else ""
 
 
-def avaliar_disciplina(
-    disciplinas_docente: list[dict[str, str]],
-    termos: tuple[str, ...],
-    *,
-    apenas_graduacao: bool = True,
-) -> str:
-    """Classifica se o docente ministra disciplinas compatíveis com `termos`.
+def carregar_docentes_rag(md_path: Path = RAG_BASE) -> list[dict[str, Any]]:
+    """Extrai os 33 docentes exclusivamente de `base_de_conhecimento_rag_docentes_dcomp_ufs.md`."""
+    texto = md_path.read_text(encoding="utf-8")
+    docentes: list[dict[str, Any]] = []
 
-    Retorna:
-    - "positivo": ministrou recentemente (2024–2026) OU >= 3 ofertas históricas.
-    - "parcial": ministrou apenas 1–2 vezes antes de 2024.
-    - "negativo": nunca ministrou disciplina com esses termos.
-    """
-    termos_norm = tuple(normalizar_texto(t) for t in termos)
-    ofertas_total = 0
-    recente = False
-
-    for disc in disciplinas_docente:
-        if apenas_graduacao and disc.get("nivel") != "graduacao":
+    for bloco in re.split(r"\n---\n", texto):
+        m_header = re.search(r"### Docente (\d+):\s*(.+)", bloco)
+        if not m_header:
             continue
-        nome_norm = normalizar_texto(disc.get("nome_disciplina", ""))
-        if any(t in nome_norm for t in termos_norm):
-            ofertas_total += int(disc.get("qtd_ofertas") or 1)
-            sem = disc.get("ultimo_semestre", "")
-            if sem.startswith(("2024.", "2025.", "2026.")):
-                recente = True
 
-    if recente or ofertas_total >= 3:
-        return "positivo"
-    if ofertas_total > 0:
-        return "parcial"
-    return "negativo"
+        loc = _extrair_campo(bloco, "Localização e Contatos")
+        sala_m = re.search(r"Sala:\s*([^|]+)", loc)
+        foto_m = re.search(r"Foto no SIGAA:\s*([^|]+)", loc)
+        sala_txt = sala_m.group(1).strip() if sala_m else ""
+        sala_num_m = re.search(r"(\d+)", sala_txt)
+
+        form_norm = normalizar_texto(_extrair_campo(bloco, "Formação Acadêmica"))
+        partes_form = [p.strip() for p in form_norm.split(";") if p.strip()]
+        grad_txt = " ; ".join(
+            p for p in partes_form if any(k in p for k in ("graduacao", "bacharelado", "licenciatura"))
+        )
+        pos_txt = " ; ".join(
+            p for p in partes_form if any(k in p for k in ("mestrado", "doutorado", "pos-doutor"))
+        )
+
+        docentes.append(
+            {
+                "id": int(m_header.group(1)),
+                "nome": m_header.group(2).strip(),
+                "siape": _extrair_campo(bloco, "Matrícula SIAPE"),
+                "sexo": normalizar_texto(_extrair_campo(bloco, "Sexo")),
+                "categoria": normalizar_texto(_extrair_campo(bloco, "Categoria Funcional")),
+                "sala_num": int(sala_num_m.group(1)) if sala_num_m else None,
+                "foto": normalizar_texto(foto_m.group(1) if foto_m else ""),
+                "formacao": form_norm,
+                "grad": grad_txt,
+                "pos": pos_txt,
+                "areas": normalizar_texto(_extrair_campo(bloco, "Áreas de Interesse (Ensino/Pesquisa)")),
+                "atuacao": normalizar_texto(_extrair_campo(bloco, "Atuação e Perfil Profissional")),
+                "lattes": normalizar_texto(_extrair_campo(bloco, "Currículo Lattes")),
+            }
+        )
+
+    return docentes
 
 
-def avaliar_area_interesse(docente: dict[str, str], termos: tuple[str, ...]) -> str:
-    """Verifica se algum termo aparece em `areas_interesse_consolidadas` ou descrição."""
-    areas = normalizar_texto(docente.get("areas_interesse_consolidadas", ""))
-    desc = normalizar_texto(docente.get("descricao_atuacao_sigaa", ""))
-    termos_norm = tuple(normalizar_texto(t) for t in termos)
-
-    if any(t in areas for t in termos_norm):
-        return "positivo"
-    if any(t in desc for t in termos_norm):
-        return "parcial"
-    return "negativo"
+def _contem_algum(texto: str, termos: tuple[str, ...]) -> bool:
+    return any(t in texto for t in termos)
 
 
-def avaliar_booleano_csv(docente: dict[str, str], coluna: str) -> str:
-    """Converte coluna booleana do CSV ('True', 'False', '') para estado semântico."""
-    val = (docente.get(coluna) or "").strip()
-    if val == "True":
-        return "positivo"
-    if val == "False":
+def _avaliar_booleano(condicao: bool) -> str:
+    return "positivo" if condicao else "negativo"
+
+
+def _avaliar_campo_textual(texto: str, termos: tuple[str, ...]) -> str:
+    if not texto or "nao cadastrad" in texto:
         return "negativo"
-    return "desconhecido"
-
+    return "positivo" if _contem_algum(texto, termos) else "negativo"
 
 
 def classificar_estado_para_probs(estado: str) -> tuple[float, float, float]:
     """Converte um estado semântico na tripla suavizada (P(sim), P(nao), P(nao_sei))."""
-
     tabela = {
         "positivo": (0.89, 0.05, 0.06),
         "negativo": (0.05, 0.89, 0.06),
@@ -116,7 +103,6 @@ def classificar_estado_para_probs(estado: str) -> tuple[float, float, float]:
     }
     if estado not in tabela:
         raise ValueError(f"Estado invalido: {estado!r}")
-
     return tabela[estado]
 
 
@@ -126,246 +112,290 @@ class RegraPergunta:
     categoria: str
     texto: str
     prioridade_aluno: float
-    avaliador: Callable[[dict[str, str], list[dict[str, str]]], str]
+    avaliador: Callable[[dict[str, Any]], str]
 
 
 def montar_catalogo_perguntas() -> list[RegraPergunta]:
-    """Retorna o catálogo de perguntas que compõem a matriz P(E | H)."""
-    perguntas: list[RegraPergunta] = [
+    """Catálogo de 24 perguntas derivadas exclusivamente da base RAG do SIGAA."""
+    return [
+        # Perfil e localização (SIGAA)
         RegraPergunta(
-            id="disc_poo",
-            categoria="disciplinas",
-            texto="Esse(a) docente costuma ministrar Programação Orientada a Objetos (POO)?",
+            id="sexo_feminino",
+            categoria="perfil",
+            texto="Esse(a) docente é do sexo feminino?",
             prioridade_aluno=1.0,
-            avaliador=lambda doc, discs: avaliar_disciplina(
-                discs, ("programacao orientada a objetos",)
-            ),
-        ),
-        
-        RegraPergunta(
-            id="atua_pos_graduacao",
-            categoria="pos_graduacao",
-            texto="Esse(a) docente atua na Pós-Graduação (mestrado/doutorado)?",
-            prioridade_aluno=1.0,
-            avaliador=lambda doc, discs: avaliar_booleano_csv(doc, "atua_pos_graduacao"),
-        ),
-        # Bloco A — Disciplinas Ministradas
-        RegraPergunta(
-            id="disc_prog_imperativa",
-            categoria="disciplinas",
-            texto="Esse(a) docente costuma ministrar Programação Imperativa ou Programação A/B/C?",
-            prioridade_aluno=1.0,
-            avaliador=lambda doc, discs: avaliar_disciplina(
-                discs,
-                ("programacao imperativa", "programacao a", "programacao b", "programacao c"),
-            ),
-        ),
-        RegraPergunta(
-            id="disc_ed_grafos",
-            categoria="disciplinas",
-            texto="Esse(a) docente costuma ministrar Estruturas de Dados ou Grafos?",
-            prioridade_aluno=1.0,
-            avaliador=lambda doc, discs: avaliar_disciplina(
-                discs, ("estrutura de dados", "estruturas de dados", "grafos")
-            ),
-        ),
-        RegraPergunta(
-            id="disc_redes_sd",
-            categoria="disciplinas",
-            texto="Esse(a) docente costuma ministrar Redes de Computadores ou Sistemas Distribuídos?",
-            prioridade_aluno=1.0,
-            avaliador=lambda doc, discs: avaliar_disciplina(
-                discs, ("redes de computadores", "sistemas distribuidos", "computacao em nuvem")
-            ),
-        ),
-        RegraPergunta(
-            id="disc_arquitetura_hardware",
-            categoria="disciplinas",
-            texto="Esse(a) docente costuma ministrar Arquitetura de Computadores, Sistemas Digitais ou Embarcados?",
-            prioridade_aluno=1.0,
-            avaliador=lambda doc, discs: avaliar_disciplina(
-                discs,
-                ("arquitetura de computadores", "sistemas digitais", "sistemas embarcados", "hardware"),
-            ),
-        ),
-        RegraPergunta(
-            id="disc_eng_software",
-            categoria="disciplinas",
-            texto="Esse(a) docente costuma ministrar Engenharia, Qualidade ou Teste de Software?",
-            prioridade_aluno=1.0,
-            avaliador=lambda doc, discs: avaliar_disciplina(
-                discs,
-                ("engenharia de software", "qualidade de software", "teste de software", "evolucao de software"),
-            ),
-        ),
-        RegraPergunta(
-            id="disc_ia_ml",
-            categoria="disciplinas",
-            texto="Esse(a) docente costuma ministrar Inteligência Artificial ou Aprendizagem de Máquina?",
-            prioridade_aluno=1.0,
-            avaliador=lambda doc, discs: avaliar_disciplina(
-                discs,
-                ("inteligencia artificial", "aprendizagem de maquina", "linguagem natural", "redes neurais"),
-            ),
-        ),
-        RegraPergunta(
-            id="disc_imagens_cg",
-            categoria="disciplinas",
-            texto="Esse(a) docente costuma ministrar Processamento de Imagens ou Computação Gráfica?",
-            prioridade_aluno=1.0,
-            avaliador=lambda doc, discs: avaliar_disciplina(
-                discs, ("processamento de imagens", "computacao grafica")
-            ),
-        ),
-        RegraPergunta(
-            id="disc_compiladores_lfc",
-            categoria="disciplinas",
-            texto="Esse(a) docente costuma ministrar Compiladores, Linguagens Formais ou Programação Funcional?",
-            prioridade_aluno=1.0,
-            avaliador=lambda doc, discs: avaliar_disciplina(
-                discs,
-                ("compiladores", "linguagens formais", "teoria da computacao", "programacao funcional"),
-            ),
-        ),
-        RegraPergunta(
-            id="disc_bd_dados",
-            categoria="disciplinas",
-            texto="Esse(a) docente costuma ministrar Banco de Dados, Engenharia de Dados ou Sistemas de Apoio à Decisão?",
-            prioridade_aluno=1.0,
-            avaliador=lambda doc, discs: avaliar_disciplina(
-                discs, ("banco de dados", "engenharia de dados", "apoio a decisao")
-            ),
-        ),
-        RegraPergunta(
-            id="disc_so_concorrente",
-            categoria="disciplinas",
-            texto="Esse(a) docente costuma ministrar Sistemas Operacionais ou Programação Paralela e Concorrente?",
-            prioridade_aluno=1.0,
-            avaliador=lambda doc, discs: avaliar_disciplina(
-                discs, ("sistemas operacionais", "programacao paralela")
-            ),
-        ),
-        RegraPergunta(
-            id="disc_etica_sociedade",
-            categoria="disciplinas",
-            texto="Esse(a) docente costuma ministrar Informática, Ética e Sociedade?",
-            prioridade_aluno=1.0,
-            avaliador=lambda doc, discs: avaliar_disciplina(
-                discs, ("etica e sociedade",)
-            ),
-        ),
-        # Bloco B — Áreas de Atuação
-        RegraPergunta(
-            id="area_educacao_ihc",
-            categoria="areas",
-            texto="Esse(a) docente atua com Informática na Educação, Jogos Educativos ou IHC?",
-            prioridade_aluno=1.0,
-            avaliador=lambda doc, discs: avaliar_area_interesse(
-                doc, ("educacao", "educativa", "jogos", "interface humano", "interacao humano")
-            ),
-        ),
-        RegraPergunta(
-            id="area_otimizacao_algoritmos",
-            categoria="areas",
-            texto="Esse(a) docente pesquisa Otimização, Metaheurísticas ou Teoria/Algoritmos?",
-            prioridade_aluno=1.0,
-            avaliador=lambda doc, discs: avaliar_area_interesse(
-                doc, ("otimizacao", "metaheuristica", "algoritmos", "grafos", "teoria")
-            ),
-        ),
-        RegraPergunta(
-            id="area_seguranca_iot",
-            categoria="areas",
-            texto="Esse(a) docente atua com Segurança, IoT/Sensores ou Computação em Nuvem?",
-            prioridade_aluno=1.0,
-            avaliador=lambda doc, discs: avaliar_area_interesse(
-                doc, ("seguranca", "criptografia", "internet das coisas", "iot", "sensores", "nuvem")
-            ),
-        ),
-        RegraPergunta(
-            id="area_saude_bio",
-            categoria="areas",
-            texto="Esse(a) docente trabalha com aplicações em Saúde Digital ou Bioinformática?",
-            prioridade_aluno=1.0,
-            avaliador=lambda doc, discs: avaliar_area_interesse(
-                doc, ("saude", "bioinformatica", "biologia", "medica", "e-health")
-            ),
-        ),
-        # Bloco C — Pós-Graduação
-        RegraPergunta(
-            id="pos_procc",
-            categoria="pos_graduacao",
-            texto="Esse(a) docente atua no Programa de Pós-Graduação em Ciência da Computação (PROCC)?",
-            prioridade_aluno=1.0,
-            avaliador=lambda doc, discs: (
-                "positivo"
-                if "PROCC" in [p.strip() for p in doc["programas_pos_sigaa"].split(";")]
-                else "negativo"
-            ),
-        ),
-        RegraPergunta(
-            id="pos_outros_programas",
-            categoria="pos_graduacao",
-            texto="Esse(a) docente atua em outro programa de pós fora do PROCC (ex.: PROEE, PPGITS, NPGME, PPGED, PPGPSI, PROFIAP)?",
-            prioridade_aluno=1.0,
-            avaliador=lambda doc, discs: (
-                "positivo"
-                if any(
-                    p.strip() and p.strip() != "PROCC"
-                    for p in doc["programas_pos_sigaa"].split(";")
-                )
-                else "negativo"
-            ),
-        ),
-        # Bloco D — Formação e Desempate
-        RegraPergunta(
-            id="form_graduacao_ufs",
-            categoria="formacao",
-            texto="Esse(a) docente fez graduação na própria UFS?",
-            prioridade_aluno=0.85,
-            avaliador=lambda doc, discs: avaliar_booleano_csv(doc, "graduacao_ufs"),
-        ),
-        RegraPergunta(
-            id="form_exterior",
-            categoria="formacao",
-            texto="Esse(a) docente fez parte da formação acadêmica no exterior?",
-            prioridade_aluno=0.85,
-            avaliador=lambda doc, discs: avaliar_booleano_csv(doc, "formacao_exterior"),
-        ),
-        RegraPergunta(
-            id="form_pos_doc",
-            categoria="formacao",
-            texto="Esse(a) docente possui Pós-Doutorado?",
-            prioridade_aluno=0.85,
-            avaliador=lambda doc, discs: avaliar_booleano_csv(doc, "pos_doutorado"),
+            avaliador=lambda d: _avaliar_booleano(d["sexo"] == "feminino"),
         ),
         RegraPergunta(
             id="vinculo_substituto",
-            categoria="formacao",
+            categoria="perfil",
             texto="Esse(a) docente é Professor(a) Substituto(a)?",
+            prioridade_aluno=1.0,
+            avaliador=lambda d: _avaliar_booleano("substituto" in d["categoria"]),
+        ),
+        RegraPergunta(
+            id="possui_foto_sigaa",
+            categoria="perfil",
+            texto="Esse(a) docente possui foto cadastrada no SIGAA?",
             prioridade_aluno=0.85,
-            avaliador=lambda doc, discs: (
-                "positivo" if doc["categoria"] == "Professor Substituto" else "negativo"
+            avaliador=lambda d: _avaliar_booleano(d["foto"] == "sim"),
+        ),
+        RegraPergunta(
+            id="possui_lattes",
+            categoria="perfil",
+            texto="Esse(a) docente possui link de Currículo Lattes informado no SIGAA?",
+            prioridade_aluno=0.85,
+            avaliador=lambda d: _avaliar_booleano("http" in d["lattes"]),
+        ),
+        RegraPergunta(
+            id="possui_sala",
+            categoria="perfil",
+            texto="Esse(a) docente tem número de sala informado no SIGAA?",
+            prioridade_aluno=0.9,
+            avaliador=lambda d: _avaliar_booleano(d["sala_num"] is not None),
+        ),
+        RegraPergunta(
+            id="sala_ate_15",
+            categoria="perfil",
+            texto="Esse(a) docente tem sala cadastrada no SIGAA com número de 01 a 15?",
+            prioridade_aluno=0.9,
+            avaliador=lambda d: _avaliar_booleano(d["sala_num"] is not None and d["sala_num"] <= 15),
+        ),
+        RegraPergunta(
+            id="perfil_completo_sigaa",
+            categoria="perfil",
+            texto="Esse(a) docente possui formação acadêmica cadastrada no SIGAA?",
+            prioridade_aluno=0.9,
+            avaliador=lambda d: _avaliar_booleano("nao cadastrada" not in d["formacao"]),
+        ),
+        # Formação acadêmica (SIGAA)
+        RegraPergunta(
+            id="graduacao_ufs",
+            categoria="formacao",
+            texto="Esse(a) docente fez graduação na UFS?",
+            prioridade_aluno=1.0,
+            avaliador=lambda d: _avaliar_booleano(bool(re.search(r"\b(ufs|sergipe)\b", d["grad"]))),
+        ),
+        RegraPergunta(
+            id="graduacao_engenharia",
+            categoria="formacao",
+            texto="Esse(a) docente fez graduação em alguma Engenharia (Elétrica, Eletrônica, Civil, Computação ou Sistemas)?",
+            prioridade_aluno=1.0,
+            avaliador=lambda d: _avaliar_booleano("engenharia" in d["grad"]),
+        ),
+        RegraPergunta(
+            id="pos_ufpe",
+            categoria="formacao",
+            texto="Esse(a) docente fez mestrado ou doutorado na UFPE?",
+            prioridade_aluno=1.0,
+            avaliador=lambda d: _avaliar_booleano(_contem_algum(d["pos"], ("ufpe", "pernambuco"))),
+        ),
+        RegraPergunta(
+            id="pos_sudeste",
+            categoria="formacao",
+            texto="Esse(a) docente fez mestrado, doutorado ou pós-doutorado no Sudeste (USP, UNICAMP, UFSCAR, PUC-Rio ou UFU)?",
+            prioridade_aluno=1.0,
+            avaliador=lambda d: _avaliar_booleano(
+                _contem_algum(d["pos"], ("usp", "unicamp", "ufscar", "puc-rio", "ufu"))
+            ),
+        ),
+        RegraPergunta(
+            id="pos_sul",
+            categoria="formacao",
+            texto="Esse(a) docente fez mestrado ou doutorado no Sul do Brasil (UFPR, UFRGS ou PUCPR)?",
+            prioridade_aluno=1.0,
+            avaliador=lambda d: _avaliar_booleano(
+                _contem_algum(d["pos"], ("ufpr", "ufrgs", "pucpr", "parana", "rio grande do sul"))
+            ),
+        ),
+        RegraPergunta(
+            id="pos_exterior",
+            categoria="formacao",
+            texto="Esse(a) docente tem formação, doutorado sanduíche ou pós-doutorado no exterior?",
+            prioridade_aluno=1.0,
+            avaliador=lambda d: _avaliar_booleano(
+                _contem_algum(
+                    d["formacao"],
+                    (
+                        "alemanha",
+                        "canada",
+                        "suecia",
+                        "colombia",
+                        "argentina",
+                        "eua",
+                        "franca",
+                        "holanda",
+                        "portugal",
+                        "espanha",
+                        "paris",
+                        "delft",
+                        "aveiro",
+                        "valencia",
+                        "toronto",
+                        "wisconsin",
+                        "simon fraser",
+                        "tubingen",
+                    ),
+                )
+            ),
+        ),
+        RegraPergunta(
+            id="pos_doutorado",
+            categoria="formacao",
+            texto="Esse(a) docente possui Pós-Doutorado cadastrado no SIGAA?",
+            prioridade_aluno=1.0,
+            avaliador=lambda d: _avaliar_booleano("pos-doutor" in d["pos"]),
+        ),
+        # Áreas de interesse (SIGAA)
+        RegraPergunta(
+            id="area_ling_prog",
+            categoria="areas",
+            texto="Esse(a) docente tem Linguagens de Programação ou Métodos Formais entre suas áreas no SIGAA?",
+            prioridade_aluno=1.0,
+            avaliador=lambda d: _avaliar_campo_textual(
+                d["areas"], ("linguagens de programacao", "metodos formais")
+            ),
+        ),
+        RegraPergunta(
+            id="area_eng_software",
+            categoria="areas",
+            texto="Esse(a) docente atua com Engenharia de Software, Qualidade/Requisitos ou Sistemas de Informação?",
+            prioridade_aluno=1.0,
+            avaliador=lambda d: _avaliar_campo_textual(
+                d["areas"],
+                (
+                    "engenharia de software",
+                    "software engineering",
+                    "sistemas de informacao",
+                    "information systems",
+                    "qualidade de software",
+                ),
+            ),
+        ),
+        RegraPergunta(
+            id="area_ia_ml_dados",
+            categoria="areas",
+            texto="Esse(a) docente atua com IA, Aprendizado de Máquina, Mineração ou Ciência de Dados?",
+            prioridade_aluno=1.0,
+            avaliador=lambda d: _avaliar_campo_textual(
+                d["areas"],
+                (
+                    "inteligencia artificial",
+                    "aprendizado de maquina",
+                    "aprendizagem de maquina",
+                    "mineracao de dados",
+                    "ciencia de dados",
+                    "computacao inteligente",
+                    "deep learning",
+                    "redes neurais",
+                ),
+            ),
+        ),
+        RegraPergunta(
+            id="area_redes_sd_iot",
+            categoria="areas",
+            texto="Esse(a) docente atua com Redes de Computadores, Sistemas Distribuídos, Nuvem ou IoT?",
+            prioridade_aluno=1.0,
+            avaliador=lambda d: _avaliar_campo_textual(
+                d["areas"],
+                (
+                    "redes de computadores",
+                    "sistemas distribuidos",
+                    "nuvem",
+                    "cloud",
+                    "iot",
+                    "internet das coisas",
+                    "sensores",
+                ),
+            ),
+        ),
+        RegraPergunta(
+            id="area_hardware_embarcados",
+            categoria="areas",
+            texto="Esse(a) docente atua com Hardware, Arquitetura de Computadores, Sistemas Embarcados ou FPGA?",
+            prioridade_aluno=1.0,
+            avaliador=lambda d: _avaliar_campo_textual(
+                d["areas"],
+                ("arquitetura de computadores", "sistemas embarcados", "microeletronica", "fpga", "hardware"),
+            ),
+        ),
+        RegraPergunta(
+            id="area_imagens_cg_visao",
+            categoria="areas",
+            texto="Esse(a) docente atua com Processamento de Imagens, Computação Gráfica ou Visão Computacional?",
+            prioridade_aluno=1.0,
+            avaliador=lambda d: _avaliar_campo_textual(
+                d["areas"], ("processamento de imagens", "computacao grafica", "visao computacional")
+            ),
+        ),
+        RegraPergunta(
+            id="area_otimizacao_teoria",
+            categoria="areas",
+            texto="Esse(a) docente atua com Otimização, Teoria da Computação ou Complexidade?",
+            prioridade_aluno=1.0,
+            avaliador=lambda d: _avaliar_campo_textual(
+                d["areas"], ("otimizacao", "teoria da computacao", "complexidade")
+            ),
+        ),
+        RegraPergunta(
+            id="area_educacao_jogos",
+            categoria="areas",
+            texto="Esse(a) docente atua com Informática na Educação, Jogos Educativos ou Ensino/Inclusão Digital?",
+            prioridade_aluno=1.0,
+            avaliador=lambda d: _avaliar_campo_textual(
+                d["areas"],
+                (
+                    "educacao",
+                    "educativa",
+                    "jogos educativos",
+                    "inclusao digital",
+                    "tecnologias educacionais",
+                    "ensino de programacao",
+                ),
+            ),
+        ),
+        RegraPergunta(
+            id="area_saude_bio_cidades",
+            categoria="areas",
+            texto="Esse(a) docente trabalha com Saúde/Bioinformática/e-Health ou Cidades Inteligentes?",
+            prioridade_aluno=1.0,
+            avaliador=lambda d: _avaliar_campo_textual(
+                d["areas"],
+                (
+                    "bioinformatica",
+                    "saude",
+                    "e-health",
+                    "ehealth",
+                    "elm-health",
+                    "healthcare",
+                    "informatica medica",
+                    "biomedica",
+                    "biossinais",
+                    "cidades inteligentes",
+                    "smart city",
+                ),
+            ),
+        ),
+        # Atuação e perfil profissional (SIGAA)
+        RegraPergunta(
+            id="atua_procc_gestao",
+            categoria="atuacao",
+            texto="O perfil no SIGAA menciona atuação no PROCC, liderança de grupo de pesquisa ou cargo de gestão?",
+            prioridade_aluno=1.0,
+            avaliador=lambda d: _avaliar_booleano(
+                _contem_algum(d["atuacao"], ("procc", "lider", "chefe", "coordenador", "vice-diretor", "pro-reitor"))
             ),
         ),
     ]
-    return perguntas
 
 
-def construir_matriz(
-    docentes_csv: Path = RAW_DOCENTES,
-    disciplinas_csv: Path = RAW_DISCIPLINAS,
-) -> dict[str, Any]:
+def construir_matriz(md_path: Path = RAG_BASE) -> dict[str, Any]:
     """Gera o dicionário completo pronto para serializar em data/processed/perguntas_matriz.json."""
-    docentes, disciplinas_por_siape = carregar_dados_brutos(docentes_csv, disciplinas_csv)
+    docentes = carregar_docentes_rag(md_path)
     catalogo = montar_catalogo_perguntas()
 
     docentes_out = [
-        {
-            "id": int(d["id"]),
-            "siape": d["siape"],
-            "nome": d["nome"],
-        }
+        {"id": d["id"], "siape": d["siape"], "nome": d["nome"]}
         for d in docentes
     ]
 
@@ -376,8 +406,7 @@ def construir_matriz(
         lik_nao_sei: list[float] = []
 
         for doc in docentes:
-            discs = disciplinas_por_siape.get(doc["siape"], [])
-            estado = regra.avaliador(doc, discs)
+            estado = regra.avaliador(doc)
             p_sim, p_nao, p_ns = classificar_estado_para_probs(estado)
             lik_sim.append(round(p_sim, 4))
             lik_nao.append(round(p_nao, 4))
@@ -418,7 +447,7 @@ def main() -> None:
     )
     print(
         f"Gerado {OUT_MATRIZ} e {OUT_WEB_JS} com {len(matriz['docentes'])} docentes "
-        f"e {len(matriz['perguntas'])} perguntas."
+        f"e {len(matriz['perguntas'])} perguntas (base exclusiva: {RAG_BASE.name})."
     )
 
 

@@ -48,7 +48,7 @@ def gerar_svg(n: int, b5: float, b5_t3: float, bl: float, llm: float, destino: P
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 270" width="680" height="270" font-family="system-ui, -apple-system, sans-serif">',
         '<rect width="680" height="270" rx="8" fill="#0f172a"/>',
         f'<text x="20" y="34" fill="#f8fafc" font-size="16" font-weight="bold">Akinator Bayesiano vs LLM (n8n + GPT-5-mini + RAG) — Amostra n={n}</text>',
-        '<text x="20" y="54" fill="#94a3b8" font-size="11">Amostra inclui os 6 docentes mais difíceis para o Bayes em 5 perguntas + 4 aleatórios</text>',
+        '<text x="20" y="54" fill="#94a3b8" font-size="11">Ambos limitados à mesma base de conhecimento (base_de_conhecimento_rag_docentes_dcomp_ufs.md)</text>',
     ]
     for i, (label, val, col) in enumerate(bars):
         y = 82 + i * 44

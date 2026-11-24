@@ -22,7 +22,7 @@ pyproject.toml
 uv.lock
 
 # Arquivos intermediários e roteiros auxiliares do experimento
-data/raw/sigaa_disciplinas_dcomp.json
+data/raw/
 scripts/build_raw_csv.py
 scripts/gerar_dicas.py
 scripts/gerar_dicas_rag.py

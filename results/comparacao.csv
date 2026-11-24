@@ -1,11 +1,11 @@
 docente,bayes5_top1,bayes5_top3,bayes_livre_top1,bayes_livre_n,llm_acertou,llm_dicas,llm_palpite
 LEONARDO NOGUEIRA MATOS,False,True,True,7,False,5,Giovanny Fernando Lucero Palma
-MICHEL DOS SANTOS SOARES,False,True,True,8,False,5,Bruno Otavio Piedade Prado
-RICARDO JOSE PAIVA DE BRITTO SALGUEIRO,False,True,True,7,False,5,Admilson de Ribamar Lima Ribeiro
-ROGERIO PATRICIO CHAGAS DO NASCIMENTO,False,True,True,7,False,5,Hendrik Teixeira Macedo
-VICTOR FLAVIO DE ANDRADE ARAUJO,False,True,True,6,False,5,Carlos Alberto Estombelo Montesco
-GIANCARLO LIMA TORRES,False,True,True,8,False,5,
-CARLOS ALBERTO ESTOMBELO MONTESCO,True,True,True,5,False,4,Glauco de Figueiredo Carneiro
-BEATRIZ TRINCHAO ANDRADE DE CARVALHO,True,True,True,5,False,2,Alberto Costa Neto
-KENIA KODEL COX,True,True,True,7,True,3,Kenia Kodel Cox
-CALEBE MICAEL DE OLIVEIRA CONCEICAO,True,True,True,5,False,3,Kenia Kodel Cox
+MICHEL DOS SANTOS SOARES,True,True,True,6,False,5,Bruno Otavio Piedade Prado
+RICARDO JOSE PAIVA DE BRITTO SALGUEIRO,True,True,True,6,False,5,Admilson de Ribamar Lima Ribeiro
+ROGERIO PATRICIO CHAGAS DO NASCIMENTO,True,True,True,5,False,5,Hendrik Teixeira Macedo
+VICTOR FLAVIO DE ANDRADE ARAUJO,False,True,True,7,False,5,Carlos Alberto Estombelo Montesco
+GIANCARLO LIMA TORRES,True,True,True,5,False,5,
+CARLOS ALBERTO ESTOMBELO MONTESCO,True,True,True,6,False,4,Glauco de Figueiredo Carneiro
+BEATRIZ TRINCHAO ANDRADE DE CARVALHO,True,True,True,7,False,2,Alberto Costa Neto
+KENIA KODEL COX,True,True,True,5,True,3,Kenia Kodel Cox
+CALEBE MICAEL DE OLIVEIRA CONCEICAO,True,True,True,4,False,3,Kenia Kodel Cox
