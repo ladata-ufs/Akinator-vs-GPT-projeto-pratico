@@ -17,6 +17,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 RAW_DOCENTES = REPO_ROOT / "raw" / "docentes_dcomp_ufs.csv"
 RAW_DISCIPLINAS = REPO_ROOT / "raw" / "disciplinas_dcomp_ufs.csv"
 OUT_MATRIZ = REPO_ROOT / "processed" / "perguntas_matriz.json"
+OUT_WEB_JS = REPO_ROOT / "web" / "matriz.js"
 
 RESPOSTAS_VALIDAS = ("sim", "nao", "nao_sei")
 
@@ -410,8 +411,13 @@ def main() -> None:
         json.dumps(matriz, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
+    OUT_WEB_JS.parent.mkdir(parents=True, exist_ok=True)
+    OUT_WEB_JS.write_text(
+        "window.MATRIZ=" + json.dumps(matriz, ensure_ascii=False) + ";",
+        encoding="utf-8",
+    )
     print(
-        f"Gerado {OUT_MATRIZ} com {len(matriz['docentes'])} docentes "
+        f"Gerado {OUT_MATRIZ} e {OUT_WEB_JS} com {len(matriz['docentes'])} docentes "
         f"e {len(matriz['perguntas'])} perguntas."
     )
 

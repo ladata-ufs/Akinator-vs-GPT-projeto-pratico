@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Compara o Akinator Bayesiano (5 perguntas / livre) com os resultados do agente LLM.
 
-Lê `results/llm_resultados.json` e gera `results/comparacao.md` e `results/comparacao.csv`.
+Lê `results/llm_resultados.json` e gera `results/comparacao.csv` e `results/comparacao.svg`.
 """
 from __future__ import annotations
 
 import csv
 import json
+import random
 import sys
 import unicodedata
 from pathlib import Path
@@ -17,7 +18,6 @@ sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 from robustez import jogar  # noqa: E402
 from src.akinator_engine import carregar_matriz  # noqa: E402
-import random  # noqa: E402
 
 R = REPO_ROOT / "results"
 
@@ -34,6 +34,29 @@ def acertou(real: str, palpite: str) -> bool:
     return bool(partes) and partes[0] in p and partes[-1] in p
 
 
+def gerar_svg(n: int, b5: float, b5_t3: float, bl: float, llm: float, destino: Path) -> None:
+    bars = [
+        ("Bayes 5 perg. (Top-1)", b5, "#3b82f6"),
+        ("Bayes 5 perg. (Top-3)", b5_t3, "#60a5fa"),
+        ("Bayes livre <=12 (Top-1)", bl, "#22c55e"),
+        ("LLM n8n+RAG 5 dicas", llm, "#f59e0b"),
+    ]
+    lines = [
+        '<svg xmlns="http://www.w3.org/2000/svg" width="680" height="270" style="background:#0f172a;font-family:system-ui,sans-serif">',
+        f'<text x="20" y="32" fill="#f8fafc" font-size="16" font-weight="bold">Akinator Bayesiano vs LLM (n8n + GPT-5-mini + RAG) — Amostra n={n}</text>',
+        '<text x="20" y="52" fill="#94a3b8" font-size="11">Amostra inclui os 6 docentes mais difíceis para o Bayes em 5 perguntas + 4 aleatórios</text>',
+    ]
+    for i, (label, val, col) in enumerate(bars):
+        y = 80 + i * 44
+        w = max(4, int(val * 3.8))
+        lines.append(f'<text x="20" y="{y+18}" fill="#e2e8f0" font-size="13">{label}</text>')
+        lines.append(f'<rect x="210" y="{y+4}" width="380" height="20" rx="4" fill="#1e293b"/>')
+        lines.append(f'<rect x="210" y="{y+4}" width="{w}" height="20" rx="4" fill="{col}"/>')
+        lines.append(f'<text x="602" y="{y+19}" fill="#f8fafc" font-size="13" font-weight="bold">{val:.1f}%</text>')
+    lines.append("</svg>")
+    destino.write_text("\n".join(lines), encoding="utf-8")
+
+
 def main() -> None:
     matriz = carregar_matriz(REPO_ROOT / "processed" / "perguntas_matriz.json")
     docs = matriz["docentes"]
@@ -46,41 +69,26 @@ def main() -> None:
         bl = jogar(matriz, idx, 12, 0.85, 0.0, 0.0, rng)
         linhas.append({
             "docente": docs[idx]["nome"],
-            "bayes5_top1": b5[0], "bayes5_top3": b5[1],
-            "bayes_livre_top1": bl[0], "bayes_livre_n": bl[2],
+            "bayes5_top1": b5[0],
+            "bayes5_top3": b5[1],
+            "bayes_livre_top1": bl[0],
+            "bayes_livre_n": bl[2],
             "llm_acertou": acertou(docs[idx]["nome"], item.get("palpite", "")),
-            "llm_dicas": item.get("dicas_usadas"), "llm_palpite": item.get("palpite", ""),
+            "llm_dicas": item.get("dicas_usadas"),
+            "llm_palpite": item.get("palpite", ""),
         })
+
     n = len(linhas)
-    soma = lambda k: sum(1 for l in linhas if l[k])  # noqa: E731
-    md = ["# Comparação Bayes × LLM (amostra de %d docentes)\n" % n,
-          "| Método | Acertos Top-1 | % |", "|---|---|---|"]
-    for nome, k in [("Bayes 5 perguntas", "bayes5_top1"), ("Bayes livre (<=12)", "bayes_livre_top1"),
-                    ("LLM (5 dicas)", "llm_acertou")]:
-        md.append(f"| {nome} | {soma(k)}/{n} | {100*soma(k)/n:.1f}% |")
-    md.append(f"\nBayes 5 perguntas, Top-3: {soma('bayes5_top3')}/{n}.\n")
-    md += ["## Por docente\n", "| Docente | Bayes5 | Bayes livre (nº perg.) | LLM | Palpite do LLM |", "|---|---|---|---|---|"]
-    ok = lambda b: "✅" if b else "❌"  # noqa: E731
-    for l in linhas:
-        md.append(f"| {l['docente']} | {ok(l['bayes5_top1'])} | {ok(l['bayes_livre_top1'])} ({l['bayes_livre_n']}) | "
-                  f"{ok(l['llm_acertou'])} ({l['llm_dicas']} dicas) | {l['llm_palpite']} |")
-    md.append("\n> Ressalva: as 5 dicas foram geradas pelo próprio motor Bayesiano (mesma informação das 5 "
-              "primeiras perguntas), o que pode favorecer o Bayes. A amostra inclui os 6 docentes mais difíceis para ele.")
-    (R / "comparacao.md").write_text("\n".join(md), encoding="utf-8")
+    pct = lambda k: 100.0 * sum(1 for l in linhas if l[k]) / n  # noqa: E731
     with (R / "comparacao.csv").open("w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=list(linhas[0])); w.writeheader(); w.writerows(linhas)
-    try:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-        nomes = ["Bayes 5", "Bayes livre", "LLM 5 dicas"]
-        vals = [100 * soma(k) / n for k in ("bayes5_top1", "bayes_livre_top1", "llm_acertou")]
-        plt.bar(nomes, vals, color=["#3b82f6", "#22c55e", "#f59e0b"])
-        plt.ylabel("Top-1 (%)"); plt.ylim(0, 100); plt.title(f"Acurácia na amostra (n={n})")
-        plt.savefig(R / "comparacao.png", dpi=150, bbox_inches="tight")
-    except ImportError:
-        print("matplotlib ausente: gráfico não gerado")
-    print("\n".join(md))
+        w = csv.DictWriter(f, fieldnames=list(linhas[0]))
+        w.writeheader()
+        w.writerows(linhas)
+    gerar_svg(n, pct("bayes5_top1"), pct("bayes5_top3"), pct("bayes_livre_top1"), pct("llm_acertou"), R / "comparacao.svg")
+
+    print(f"Amostra n={n} | Bayes5 Top-1: {pct('bayes5_top1'):.1f}% (Top-3: {pct('bayes5_top3'):.1f}%) | "
+          f"Bayes livre: {pct('bayes_livre_top1'):.1f}% | LLM: {pct('llm_acertou'):.1f}%")
+    print(f"Salvo em {R / 'comparacao.csv'} e {R / 'comparacao.svg'}")
 
 
 if __name__ == "__main__":

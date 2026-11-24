@@ -1,54 +1,187 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><title>Akinator Bayesiano — DCOMP/UFS</title>
-<style>
-body{font-family:system-ui,sans-serif;max-width:900px;margin:20px auto;padding:0 12px;background:#10141c;color:#e8ecf3}
-h1{font-size:1.4rem}.card{background:#1a2030;border-radius:10px;padding:14px;margin:12px 0}
-button{padding:8px 16px;margin:4px;border:0;border-radius:6px;background:#3b82f6;color:#fff;cursor:pointer;font-size:1rem}
-button.n{background:#ef4444}button.s{background:#6b7280}button.g{background:#22c55e}
-.bar{display:flex;align-items:center;margin:3px 0;font-size:.85rem}.bar .l{width:300px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.bar .b{height:12px;background:#3b82f6;border-radius:3px;transition:width .3s}.bar .v{margin-left:8px;width:50px}
-.q{font-size:1.2rem;margin:8px 0}small{color:#9aa4b5}table{width:100%;font-size:.8rem}
-</style></head><body>
-<h1>🔮 Akinator Bayesiano — Docentes do DCOMP/UFS</h1>
-<div class="card">Pense em um(a) docente. Modo:
- <select id="modo"><option value="5">5 perguntas (igual ao LLM)</option><option value="12">Livre (até 12, confiança 85%)</option></select>
- <label style="margin-left:8px;font-size:.9rem"><input type="checkbox" id="variar" checked> Variar perguntas (Top-3 Gini)</label>
- <button onclick="iniciar()">Novo jogo</button></div>
-<div class="card" id="jogo"></div>
-<div class="card"><b>Ranking de probabilidade</b> <small id="gini"></small><div id="rank"></div></div>
-<div class="card"><b>Histórico (Regra de Bayes)</b><table id="hist"></table></div>
-<script src="matriz.js"></script>
-<script>
-const {docentes:D,perguntas:Q}=MATRIZ, R=['sim','nao','nao_sei'];
-let probs,feitas,n,hist,atual,maxq,lim=0.85;
-const gini=p=>1-p.reduce((s,x)=>s+x*x,0);
-function bayes(p,l){const pr=p.map((x,i)=>x*l[i]),s=pr.reduce((a,b)=>a+b,0);return s==0?[...p]:pr.map(x=>x/s)}
-function melhor(){
- const c=[];
- Q.forEach((q,i)=>{if(feitas.has(i))return;let g=0;
-  for(const r of R){const l=q.lik[r],pr=probs.reduce((s,x,j)=>s+x*l[j],0);if(pr>0)g+=pr*gini(bayes(probs,l))}
-  c.push([g,i])});
- if(!c.length)return null;
- c.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
- if(!document.getElementById('variar').checked)return c[0][1];
- const pool=n===0?c.slice(0,3):c.filter(x=>x[0]<=c[0][0]+0.002);
- return pool[Math.floor(Math.random()*pool.length)][1];
-}
-function parar(){return n>=maxq||Math.max(...probs)>=lim}
-function iniciar(){maxq=+document.getElementById('modo').value;probs=D.map(()=>1/D.length);feitas=new Set();n=0;hist=[];proxima()}
-function proxima(){if(parar()){fim();render();return}atual=melhor();if(atual==null){fim();render();return}render()}
-function responder(r){const q=Q[atual],ant=gini(probs);feitas.add(atual);probs=bayes(probs,q.lik[r]);n++;
- const t=probs.map((p,i)=>[p,i]).sort((a,b)=>b[0]-a[0])[0];
- hist.push(`<tr><td>${n}</td><td>${q.texto}</td><td>${r}</td><td>Gini ${ant.toFixed(3)}→${gini(probs).toFixed(3)}</td><td>${D[t[1]].nome} ${(t[0]*100).toFixed(1)}%</td></tr>`);proxima()}
-function fim(){atual=null}
-function render(){const j=document.getElementById('jogo');
- if(atual==null){const t=probs.map((p,i)=>[p,i]).sort((a,b)=>b[0]-a[0])[0];
-  j.innerHTML=`<div class="q">Meu palpite: <b>${D[t[1]].nome}</b> (${(t[0]*100).toFixed(1)}%)</div><small>${n} pergunta(s)</small>`}
- else j.innerHTML=`<small>Pergunta ${n+1}/${maxq}</small><div class="q">${Q[atual].texto}</div>
-  <button class="g" onclick="responder('sim')">Sim</button><button class="n" onclick="responder('nao')">Não</button><button class="s" onclick="responder('nao_sei')">Não sei</button>`;
- const top=probs.map((p,i)=>[p,i]).sort((a,b)=>b[0]-a[0]).slice(0,10);
- document.getElementById('rank').innerHTML=top.map(([p,i])=>`<div class="bar"><span class="l">${D[i].nome}</span><span class="b" style="width:${p*300}px"></span><span class="v">${(p*100).toFixed(1)}%</span></div>`).join('');
- document.getElementById('gini').textContent=`— Gini: ${gini(probs).toFixed(3)}`;
- document.getElementById('hist').innerHTML=hist.join('')}
-iniciar();
-</script></body></html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Akinator Bayesiano — DCOMP/UFS</title>
+  <style>
+    :root { --bg:#0f172a; --card:#1e293b; --muted:#94a3b8; --text:#f1f5f9; --border:#334155; --accent:#3b82f6; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; max-width: 920px; margin: 0 auto; padding: 20px 14px 40px; background: var(--bg); color: var(--text); line-height: 1.45; }
+    h1 { font-size: 1.45rem; margin: 0 0 4px; }
+    .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 16px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin: 12px 0; }
+    .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    select { background: #0f172a; color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 0.92rem; }
+    button { padding: 9px 16px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; font-size: 0.95rem; font-weight: 600; transition: opacity .15s; }
+    button:hover { opacity: 0.9; }
+    button.g { background: #16a34a; } button.n { background: #dc2626; } button.s { background: #475569; } button.sec { background: #334155; font-size: 0.85rem; padding: 7px 12px; }
+    .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .q { font-size: 1.18rem; font-weight: 600; margin: 8px 0 4px; }
+    .badge { display: inline-block; background: #0f172a; border: 1px solid var(--border); color: var(--muted); border-radius: 999px; padding: 2px 10px; font-size: 0.78rem; }
+    .bar { display: grid; grid-template-columns: minmax(150px, 280px) 1fr 56px; align-items: center; gap: 10px; margin: 6px 0; font-size: 0.85rem; }
+    .bar .l { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .track { background: #0f172a; height: 12px; border-radius: 4px; overflow: hidden; }
+    .fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width .25s ease; }
+    .bar.top1 .fill { background: #22c55e; }
+    .bar .v { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-top: 8px; }
+    th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 600; }
+    .top3 { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .top3 span { background: #0f172a; border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 0.85rem; }
+    footer { text-align: center; color: var(--muted); font-size: 0.8rem; margin-top: 20px; }
+    footer a { color: #60a5fa; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <h1>Akinator Bayesiano — Docentes do DCOMP/UFS</h1>
+  <div class="sub">Inferência pela Regra de Bayes e seleção dinâmica de perguntas via Índice de Gini (33 docentes).</div>
+
+  <div class="card controls">
+    <label>Modo:
+      <select id="modo">
+        <option value="5">5 perguntas (comparação LLM)</option>
+        <option value="12">Livre (até 12 perguntas, confiança 85%)</option>
+      </select>
+    </label>
+    <label style="font-size:.9rem"><input type="checkbox" id="variar" checked> Variar perguntas (Top-3 Gini)</label>
+    <button onclick="iniciar()">Novo jogo</button>
+    <button class="sec" onclick="desfazer()" id="btn-undo" disabled>Desfazer</button>
+  </div>
+
+  <div class="card" id="jogo"></div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+      <b>Ranking de probabilidade (Top 10)</b>
+      <span class="badge" id="gini"></span>
+    </div>
+    <div id="rank" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card">
+    <b>Histórico (Regra de Bayes)</b>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>#</th><th>Pergunta</th><th>Resp.</th><th>Gini</th><th>Líder</th></tr></thead>
+        <tbody id="hist"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>Projeto prático SEMAC 2026 — LADATA / DCOMP-UFS</footer>
+
+  <script src="matriz.js"></script>
+  <script>
+    const { docentes: D, perguntas: Q } = MATRIZ;
+    const R = ['sim', 'nao', 'nao_sei'];
+    const ROTULO = { sim: 'Sim', nao: 'Não', nao_sei: 'Não sei' };
+    let probs, feitas, n, hist, snapshots, atual, maxq, lim = 0.85;
+
+    const gini = p => 1 - p.reduce((s, x) => s + x * x, 0);
+
+    function bayes(p, l) {
+      const pr = p.map((x, i) => x * l[i]);
+      const s = pr.reduce((a, b) => a + b, 0);
+      return s === 0 ? [...p] : pr.map(x => x / s);
+    }
+
+    function melhor() {
+      const c = [];
+      Q.forEach((q, i) => {
+        if (feitas.has(i)) return;
+        let g = 0;
+        for (const r of R) {
+          const l = q.lik[r];
+          const pr = probs.reduce((s, x, j) => s + x * l[j], 0);
+          if (pr > 0) g += pr * gini(bayes(probs, l));
+        }
+        c.push([g, i]);
+      });
+      if (!c.length) return null;
+      c.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      if (!document.getElementById('variar').checked) return c[0][1];
+      const pool = n === 0 ? c.slice(0, 3) : c.filter(x => x[0] <= c[0][0] + 0.002);
+      return pool[Math.floor(Math.random() * pool.length)][1];
+    }
+
+    function parar() {
+      return n >= maxq || Math.max(...probs) >= lim;
+    }
+
+    function iniciar() {
+      maxq = +document.getElementById('modo').value;
+      probs = D.map(() => 1 / D.length);
+      feitas = new Set();
+      n = 0;
+      hist = [];
+      snapshots = [];
+      proxima();
+    }
+
+    function proxima() {
+      if (parar()) { atual = null; render(); return; }
+      atual = melhor();
+      render();
+    }
+
+    function responder(r) {
+      snapshots.push({ probs: [...probs], feitas: new Set(feitas), n, hist: [...hist], atual });
+      const q = Q[atual], ant = gini(probs);
+      feitas.add(atual);
+      probs = bayes(probs, q.lik[r]);
+      n++;
+      const t = probs.map((p, i) => [p, i]).sort((a, b) => b[0] - a[0])[0];
+      hist.push(`<tr><td>${n}</td><td>${q.texto}</td><td>${ROTULO[r]}</td><td>${ant.toFixed(3)} → ${gini(probs).toFixed(3)}</td><td>${D[t[1]].nome} (${(t[0] * 100).toFixed(1)}%)</td></tr>`);
+      proxima();
+    }
+
+    function desfazer() {
+      if (!snapshots.length) return;
+      const snap = snapshots.pop();
+      probs = snap.probs;
+      feitas = snap.feitas;
+      n = snap.n;
+      hist = snap.hist;
+      atual = snap.atual;
+      render();
+    }
+
+    function render() {
+      document.getElementById('btn-undo').disabled = snapshots.length === 0;
+      const j = document.getElementById('jogo');
+      const top = probs.map((p, i) => [p, i]).sort((a, b) => b[0] - a[0]);
+
+      if (atual === null) {
+        const [p1, i1] = top[0];
+        const extras = top.slice(1, 3).map(([p, i]) => `<span>${D[i].nome} (${(p * 100).toFixed(1)}%)</span>`).join('');
+        j.innerHTML = `<span class="badge">Palpite final após ${n} pergunta(s)</span>
+          <div class="q">${D[i1].nome} — ${(p1 * 100).toFixed(1)}% de confiança</div>
+          <div class="top3">${extras}</div>`;
+      } else {
+        const q = Q[atual];
+        j.innerHTML = `<span class="badge">Pergunta ${n + 1} de ${maxq} · ${q.categoria}</span>
+          <div class="q">${q.texto}</div>
+          <div class="btns">
+            <button class="g" onclick="responder('sim')">Sim</button>
+            <button class="n" onclick="responder('nao')">Não</button>
+            <button class="s" onclick="responder('nao_sei')">Não sei</button>
+          </div>`;
+      }
+
+      document.getElementById('rank').innerHTML = top.slice(0, 10).map(([p, i], idx) =>
+        `<div class="bar ${idx === 0 ? 'top1' : ''}">
+          <span class="l" title="${D[i].nome}">${D[i].nome}</span>
+          <div class="track"><div class="fill" style="width:${(p * 100).toFixed(1)}%"></div></div>
+          <span class="v">${(p * 100).toFixed(1)}%</span>
+        </div>`
+      ).join('');
+      document.getElementById('gini').textContent = `Gini atual: ${gini(probs).toFixed(3)}`;
+      document.getElementById('hist').innerHTML = hist.join('');
+    }
+
+    iniciar();
+  </script>
+</body>
+</html>
