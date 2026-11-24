@@ -1,0 +1,24 @@
+# Ambiente Python e caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Materiais de referência e testes locais
+docs/
+tests/
+pyproject.toml
+uv.lock
+
+# Arquivos intermediários e roteiros auxiliares do experimento
+raw/sigaa_disciplinas_dcomp.json
+scripts/build_raw_csv.py
+scripts/gerar_dicas.py
+scripts/gerar_dicas_rag.py
+results/amostra_llm.json
+results/amostra_llm_rag.json
+results/dicas.json
+results/roteiro_teste_llm.md
+results/roteiro_teste_llm_rag.md

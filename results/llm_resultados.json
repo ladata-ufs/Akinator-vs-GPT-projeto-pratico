@@ -1,0 +1,105 @@
+[
+  {
+    "id": 23,
+    "nome_real": "LEONARDO NOGUEIRA MATOS",
+    "dicas_usadas": 5,
+    "palpite": "Giovanny Fernando Lucero Palma",
+    "candidatos": [
+      "Giovanny Fernando Lucero Palma"
+    ],
+    "resposta_final": "[Dica 5/5]\nPerfeito — apliquei a última restrição (ministra Programação / Linguagens de Programação) sobre o conjunto já filtrado pelo RAG. Dos candidatos que ainda permaneciam, apenas um tem explicitamente registrada a área \"Linguagens de Programação\" no RAG:\nGiovanny Fernando Lucero Palma — áreas: Linguagens de Programação, Engenharia de Software e Métodos Formais.\nCom base nisso, meu palpite final é: Prof. Giovanny Fernando Lucero Palma. Acertei?\n(Uma rodada concluída — quer jogar outra partida?)"
+  },
+  {
+    "id": 25,
+    "nome_real": "MICHEL DOS SANTOS SOARES",
+    "dicas_usadas": 5,
+    "palpite": "Bruno Otavio Piedade Prado",
+    "candidatos": [
+      "Bruno Otavio Piedade Prado"
+    ],
+    "resposta_final": "[Dica 5/5]\nApliquei a última dica ao RAG: removi todos os docentes cujos registros indicam que costumam ministrar Programação Imperativa / disciplinas de Programação A/B/C (ex.: docentes com \"Linguagens de Programação\" ou \"Programação\" explicitamente listados).\nApós cruzar todos os filtros (graduação NÃO na UFS; NÃO trabalha com Saúde Digital/Bioinformática; NÃO possui pós‑doutorado; NÃO ministra Redes/Sistemas Distribuídos; e NÃO ministra Programação Imperativa), resta um único candidato compatível no RAG:\nMeu palpite final é o Prof. Bruno Otavio Piedade Prado.\nAcertei? Parabéns pelo jogo — quer jogar outra rodada?"
+  },
+  {
+    "id": 27,
+    "nome_real": "RICARDO JOSE PAIVA DE BRITTO SALGUEIRO",
+    "dicas_usadas": 5,
+    "palpite": "Admilson de Ribamar Lima Ribeiro",
+    "candidatos": [
+      "Admilson de Ribamar Lima Ribeiro",
+      "Edilayne Meneses Salgueiro",
+      "Ricardo José Paiva de Britto Salgueiro"
+    ],
+    "resposta_final": "[Dica 5/5]\nÓtimo — com a última dica tenho que arriscar o palpite final (regra do jogo).\nPalpite final: Admilson de Ribamar Lima Ribeiro.\nPor quê (com base no RAG): sua graduação não é na UFS (UFPA); suas áreas listadas incluem exatamente “Redes de Computadores” e “Sistemas Distribuídos”; não há pós‑doutorado registrado; e não há indicação de atuação em informática na educação, jogos educativos ou IHC — portanto é compatível com todas as 5 dicas.\nAcertou? Se sim, vou comemorar — se errei, reconheço a derrota com bom humor. Quer jogar outra rodada?"
+  },
+  {
+    "id": 29,
+    "nome_real": "ROGERIO PATRICIO CHAGAS DO NASCIMENTO",
+    "dicas_usadas": 5,
+    "palpite": "Hendrik Teixeira Macedo",
+    "candidatos": [
+      "Débora Maria Coelho Nascimento",
+      "Calebe Micael de Oliveira Conceição",
+      "Rogerio Patricio Chagas do Nascimento",
+      "Hendrik Teixeira Macedo"
+    ],
+    "resposta_final": "[Dica 5/5]\nÓtimo — apliquei sua negativa final. Do conjunto anterior (Débora, Calebe, Rogerio, Tarcísio, Kalil, Hendrik) eliminei, com base no RAG:\nKalil Araujo Bispo — tinha \"Internet das Coisas / Rede de Sensores\" no RAG (eliminado).\nTarcísio da Rocha — tinha \"Computação em Nuvem / Cloud Computing\" no RAG (eliminado).\nRestaram 4 candidatos compatíveis com todas as suas 5 dicas (nenhuma das áreas citadas nos perfis):\nDébora Maria Coelho Nascimento (Engenharia de Software)\nCalebe Micael de Oliveira Conceição (Microeletrônica / FPGA)\nRogerio Patricio Chagas do Nascimento (perfil sem áreas detalhadas no trecho consultado)\nHendrik Teixeira Macedo (Computação Inteligente, PLN e Visão Computacional)\nPalpite final (5/5): aposto no Prof. Hendrik Teixeira Macedo — Professor Titular do DCOMP/UFS, com atuação em Computação Inteligente, Processamento de Linguagem Natural e Visão Computacional — porque seu perfil no RAG é totalmente compatível com todas as negativas que você deu (não consta atuação em linguagens formais/compiladores, informática educativa/jogos/IHC, otimização/metaheurísticas/teoria, nem segurança/IoT/cloud).\nAcertI? Se sim, que belo jogo! Se errei, reconheço a derrota com bom humor — quer jogar outra rodada?"
+  },
+  {
+    "id": 31,
+    "nome_real": "VICTOR FLAVIO DE ANDRADE ARAUJO",
+    "dicas_usadas": 5,
+    "palpite": "Carlos Alberto Estombelo Montesco",
+    "candidatos": [
+      "Carlos Alberto Estombelo Montesco"
+    ],
+    "resposta_final": "[Dica 5/5] Perfeito — você disse que é falso que o docente atua com Segurança, IoT/Sensores ou Computação em Nuvem.\nCruzando com o RAG e aplicando todas as dicas:\nEliminei o Prof. Edward David Moreno Ordóñez porque ele tem \"Hardware Security\" entre suas áreas (logo, atua com Segurança).\nO Prof. Glauco já havia sido eliminado pela Dica 4 (bancos de dados).\nSobra apenas 1 docente compatível: Carlos Alberto Estombelo Montesco — ele possui pós‑doutorados (SFU e USP), não fez graduação na UFS (UFSCAR), não atua em Saúde/Bioinformática nem em Bancos de Dados/Segurança/IoT/Cloud; suas áreas são Inteligência Artificial, Aprendizado de Máquina e Deep Learning.\nMeu palpite final: é o Prof. Carlos Alberto Estombelo Montesco. Acertei?\nParabéns pelo jogo! Quer jogar outra rodada?"
+  },
+  {
+    "id": 33,
+    "nome_real": "GIANCARLO LIMA TORRES",
+    "dicas_usadas": 5,
+    "palpite": null,
+    "candidatos": [],
+    "resposta_final": "{ \"output\": \"\" }"
+  },
+  {
+    "id": 10,
+    "nome_real": "CARLOS ALBERTO ESTOMBELO MONTESCO",
+    "dicas_usadas": 4,
+    "palpite": "Glauco de Figueiredo Carneiro",
+    "candidatos": [
+      "Glauco de Figueiredo Carneiro"
+    ],
+    "resposta_final": "[Dica 4/5]\nBoa pista — “ministrar Banco de Dados / Engenharia de Dados / Sistemas de Apoio à Decisão”. Cruzando com o RAG e com os 3 candidatos que sobraram (Carlos Montesco — IA/ML; Edward Moreno — sistemas embarcados/hardware; Glauco Carneiro — ciência de dados e bancos de dados SQL/NoSQL), só Glauco de Figueiredo Carneiro tem, no registro, atuação explícita envolvendo bancos de dados e temas de ciência de dados.\nMeu palpite final é: Profa./Profa. (ou Prof.) Glauco de Figueiredo Carneiro. Acertei? Quer jogar outra rodada?"
+  },
+  {
+    "id": 6,
+    "nome_real": "BEATRIZ TRINCHAO ANDRADE DE CARVALHO",
+    "dicas_usadas": 2,
+    "palpite": "Alberto Costa Neto",
+    "candidatos": [
+      "Alberto Costa Neto"
+    ],
+    "resposta_final": "[Dica 2/5]\nBoa dica! Cruzei com o RAG apenas entre os 8 candidatos que sobraram da Dica 1. Nos perfis, somente o Prof. Alberto Costa Neto tem, explicitamente, \"Linguagens de Programação\" cadastrado (o que é o item mais próximo de \"Linguagens Formais/Programação Funcional/Compiladores\" entre os termos fornecidos).\nPortanto, meu palpite final é: Prof. Alberto Costa Neto. Acertei?\nSe errei, vamos para a próxima rodada — quer jogar outra partida?"
+  },
+  {
+    "id": 22,
+    "nome_real": "KENIA KODEL COX",
+    "dicas_usadas": 3,
+    "palpite": "Kenia Kodel Cox",
+    "candidatos": [
+      "Kenia Kodel Cox"
+    ],
+    "resposta_final": "[Dica 3/5] Ótima pista — cruzei com o RAG do DCOMP/UFS. Entre os candidatos que restavam, apenas uma docente tem, explicitamente, registro de atuação em Informática na Educação / Construção de Jogos Educativos Computacionais / Ensino de Programação: a Profa. Kenia Kodel Cox (Docente 22 — Sala 01, Ramal 6802; graduação em Ciência da Computação pela UFS).\nMeu palpite final: Profa. Kenia Kodel Cox. Acertei? Quer jogar outra rodada?"
+  },
+  {
+    "id": 9,
+    "nome_real": "CALEBE MICAEL DE OLIVEIRA CONCEICAO",
+    "dicas_usadas": 3,
+    "palpite": "Kenia Kodel Cox",
+    "candidatos": [
+      "Kenia Kodel Cox"
+    ],
+    "resposta_final": "[Dica 3/5] Perfeito — com essa dica cruzei os filtros: graduação na UFS (Dica 1), não ministra/tem áreas em Compiladores/Linguagens Formais/Programação Funcional (Dica 2) e atua com Informática Educativa/Jogos Educativos/IHC (Dica 3).\nNo RAG há apenas UMA docente que satisfaz todos esses critérios: a Profa. Kenia Kodel Cox — que tem graduação em Ciência da Computação pela UFS e cujas áreas incluem construção de jogos educativos computacionais e informática educativa.\nMeu palpite final: Profa. Kenia Kodel Cox. Acertei? Quer jogar outra rodada?"
+  }
+]
