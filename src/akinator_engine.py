@@ -21,7 +21,7 @@ class AkinatorState:
 
 
 def carregar_matriz(json_path: Path) -> dict[str, Any]:
-    """Carrega o arquivo processed/perguntas_matriz.json."""
+    """Carrega o arquivo data/processed/perguntas_matriz.json."""
     return json.loads(json_path.read_text(encoding="utf-8"))
 
 

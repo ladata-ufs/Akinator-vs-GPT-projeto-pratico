@@ -5,7 +5,7 @@ Projeto desenvolvido para a **SEMAC 2026 (LADATA / UFS)** que compara duas abord
 1. **Abordagem Clássica (Bayes + Índice de Gini):** motor probabilístico puramente matemático, determinístico, offline e interpretável, que escolhe as perguntas mais informativas dinamicamente.
 2. **Abordagem Generativa (LLM + RAG no n8n):** agente conversacional baseado em `gpt-5-mini` com recuperação vetorial (`topK = 35`) sobre perfis textuais em Markdown, limitado a **5 dicas** fornecidas pelo jogador.
 
-> **Jogar online (GitHub Pages):** ao ativar o GitHub Pages na branch `main` (`/ (root)`), o [`index.html`](index.html) redireciona automaticamente para a interface interativa em [`web/index.html`](web/index.html) (100% estática em HTML/JS).
+> **Jogar online:** funciona 100% estático em HTML/JS via **GitHub Pages** (para repositórios públicos) ou **Vercel** (gratuito inclusive para repositórios privados). O [`index.html`](index.html) na raiz redireciona automaticamente para [`web/index.html`](web/index.html).
 
 ---
 
@@ -18,8 +18,8 @@ Diferente de uma árvore de decisão rígida (onde um erro do jogador elimina o 
 1. **Distribuição *a priori* uniforme:**
    $$P(H_i) = \frac{1}{33}, \quad \forall i \in \{1, \dots, 33\}$$
 
-2. **Matriz de Verossimilhança suavizada $P(E \mid H)$ (`processed/perguntas_matriz.json`):**
-   Construída por `scripts/build_likelihood_matrix.py` a partir das tabelas de docentes (`raw/docentes_dcomp_ufs.csv`) e vínculos docente–disciplina (`raw/disciplinas_dcomp_ufs.csv`, 1.545 registros). São **23 perguntas** divididas em 4 blocos:
+2. **Matriz de Verossimilhança suavizada $P(E \mid H)$ (`data/processed/perguntas_matriz.json`):**
+   Construída por `scripts/build_likelihood_matrix.py` a partir das tabelas de docentes (`data/raw/docentes_dcomp_ufs.csv`) e vínculos docente–disciplina (`data/raw/disciplinas_dcomp_ufs.csv`, 1.545 registros). São **23 perguntas** divididas em 4 blocos:
    - `disciplinas` (12 perguntas): disciplinas de graduação frequentemente ministradas (POO, Programação Imperativa/A/B/C, ED/Grafos, Redes/SD, Arquitetura, Eng. Software, IA/ML, Imagens/CG, Compiladores/LFC, Banco de Dados, SO/Paralela, Ética e Sociedade).
    - `areas` (4 perguntas): Informática na Educação/IHC, Otimização/Algoritmos, Segurança/IoT/Nuvem, Saúde Digital/Bioinformática.
    - `pos_graduacao` (3 perguntas): atuação na pós-graduação, PROCC ou outros programas.
@@ -51,10 +51,10 @@ Diferente de uma árvore de decisão rígida (onde um erro do jogador elimina o 
 
 ---
 
-### 1.2. Agente LLM + RAG (`workflow.json`, `base_de_conhecimento_rag_docentes_dcomp_ufs.md`)
+### 1.2. Agente LLM + RAG (`llm/workflow.json`, `llm/base_de_conhecimento_rag_docentes_dcomp_ufs.md`)
 
 A abordagem generativa implementa um fluxo no **n8n** composto por:
-- **Indexação:** upload da base textual `base_de_conhecimento_rag_docentes_dcomp_ufs.md` (perfis dos 33 docentes com sexo, categoria, sala, ramal, formação, áreas de interesse, atuação e Lattes) vetorizada com `embeddingsOpenAi` em um `vectorStoreInMemory`.
+- **Indexação:** upload da base textual `llm/base_de_conhecimento_rag_docentes_dcomp_ufs.md` (perfis dos 33 docentes com sexo, categoria, sala, ramal, formação, áreas de interesse, atuação e Lattes) vetorizada com `embeddingsOpenAi` em um `vectorStoreInMemory`.
 - **Agente Conversacional:** `gpt-5-mini` (`maxTokens = 3000`), memória de janela `memoryBufferWindow` (`contextWindowLength = 6`) e ferramenta de recuperação RAG configurada com `topK = 35`.
 - **Dinâmica do Jogo:** o usuário envia dicas livres em linguagem natural; o agente controla o contador `[Dica 1/5]` até `[Dica 5/5]`, cruza os atributos recuperados e precisa cravar um palpite final até a 5ª dica.
 
@@ -144,9 +144,10 @@ Graças às probabilidades suavizadas e à neutralidade de `nao_sei`, mesmo quan
 
 ## 3. Como Executar
 
-### 3.1. Interface Web (Local e GitHub Pages)
+### 3.1. Interface Web (Local, GitHub Pages ou Vercel)
 - **Localmente:** abra [`web/index.html`](web/index.html) diretamente no navegador (não precisa de servidor nem build).
-- **No GitHub Pages:** no repositório do GitHub, acesse **Settings → Pages → Source: Deploy from a branch → Branch: `main` / `/ (root)`**. O arquivo [`index.html`](index.html) na raiz redireciona automaticamente para `web/`.
+- **GitHub Pages (repo público):** acesse **Settings → Pages → Source: Deploy from a branch → Branch: `main` / `/ (root)`**. O [`index.html`](index.html) redireciona para `web/`.
+- **Vercel (repo privado ou público):** importe o repositório com **Framework Preset: Other** e **Root Directory: `./`** (ou `./web`).
 
 ### 3.2. CLI e Scripts Python
 Requer apenas **Python 3.12+** (biblioteca padrão, sem dependências externas obrigatórias):
@@ -157,7 +158,7 @@ python3 scripts/jogar_cli.py --modo 5
 python3 scripts/jogar_cli.py --modo livre
 python3 scripts/jogar_cli.py --modo livre --deterministico
 
-# Regerar a matriz de verossimilhança (processed/perguntas_matriz.json e web/matriz.js)
+# Regerar a matriz de verossimilhança (data/processed/perguntas_matriz.json e web/matriz.js)
 python3 scripts/build_likelihood_matrix.py
 
 # Rodar benchmark completo nos 33 docentes
@@ -171,38 +172,40 @@ python3 scripts/comparar.py
 ```
 
 ### 3.3. Abordagem LLM no n8n
-1. Importe [`workflow.json`](workflow.json) na sua instância do n8n.
+1. Importe [`llm/workflow.json`](llm/workflow.json) na sua instância do n8n.
 2. Configure suas credenciais da OpenAI nos nós de Chat e Embeddings.
-3. Indexe [`base_de_conhecimento_rag_docentes_dcomp_ufs.md`](base_de_conhecimento_rag_docentes_dcomp_ufs.md) usando o formulário de carga do próprio workflow e abra o nó **Chat do Usuário**.
+3. Indexe [`llm/base_de_conhecimento_rag_docentes_dcomp_ufs.md`](llm/base_de_conhecimento_rag_docentes_dcomp_ufs.md) usando o formulário de carga do próprio workflow e abra o nó **Chat do Usuário**.
 
 ---
 
 ## 4. Estrutura do Repositório
 
 ```
-├── index.html                                    # Redirecionamento para web/ (GitHub Pages)
-├── README.md                                     # Documentação principal e comparativos
-├── base_de_conhecimento_rag_docentes_dcomp_ufs.md# Base textual utilizada pelo agente RAG
-├── workflow.json                                 # Fluxo n8n (gpt-5-mini + RAG + memória)
-├── raw/
-│   ├── docentes_dcomp_ufs.csv                    # Dados consolidados dos 33 docentes
-│   └── disciplinas_dcomp_ufs.csv                 # 1.545 vínculos docente–disciplina (SIGAA)
-├── processed/
-│   └── perguntas_matriz.json                     # Matriz de verossimilhança P(E | H) (33 × 23)
+├── index.html                                         # Redirecionamento para web/
+├── README.md                                          # Documentação principal e comparativos
+├── data/
+│   ├── raw/
+│   │   ├── docentes_dcomp_ufs.csv                     # Dados consolidados dos 33 docentes
+│   │   └── disciplinas_dcomp_ufs.csv                  # 1.545 vínculos docente–disciplina (SIGAA)
+│   └── processed/
+│       └── perguntas_matriz.json                      # Matriz de verossimilhança P(E | H) (33 × 23)
 ├── src/
-│   └── akinator_engine.py                        # Priors, Bayes, Gini, seleção e parada
+│   └── akinator_engine.py                             # Priors, Bayes, Gini, seleção e parada
 ├── scripts/
-│   ├── build_likelihood_matrix.py                # Gera perguntas_matriz.json e web/matriz.js
-│   ├── jogar_cli.py                              # Jogo interativo no terminal
-│   ├── simular_benchmark.py                      # Benchmark nos 33 docentes
-│   ├── robustez.py                               # Simulação de ruído e "não sei"
-│   └── comparar.py                               # Consolida comparacao.csv e comparacao.svg
+│   ├── build_likelihood_matrix.py                     # Gera perguntas_matriz.json e web/matriz.js
+│   ├── jogar_cli.py                                   # Jogo interativo no terminal
+│   ├── simular_benchmark.py                           # Benchmark nos 33 docentes
+│   ├── robustez.py                                    # Simulação de ruído e "não sei"
+│   └── comparar.py                                    # Consolida comparacao.csv e comparacao.svg
 ├── web/
-│   ├── index.html                                # Interface web estática do Akinator Bayesiano
-│   └── matriz.js                                 # Matriz em JS gerada a partir do JSON
+│   ├── index.html                                     # Interface web estática do Akinator Bayesiano
+│   └── matriz.js                                      # Matriz em JS gerada a partir do JSON
+├── llm/
+│   ├── workflow.json                                  # Fluxo n8n (gpt-5-mini + RAG + memória)
+│   └── base_de_conhecimento_rag_docentes_dcomp_ufs.md # Base textual utilizada pelo agente RAG
 └── results/
-    ├── llm_resultados.json                       # Log das 10 partidas reais no chat LLM
-    ├── comparacao.csv                            # Resultados pareados Bayes × LLM
-    ├── comparacao.svg                            # Gráfico comparativo exibido neste README
-    └── robustez.csv                              # Tabela completa de robustez ao ruído
+    ├── llm_resultados.json                            # Log das 10 partidas reais no chat LLM
+    ├── comparacao.csv                                 # Resultados pareados Bayes × LLM
+    ├── comparacao.svg                                 # Gráfico comparativo exibido neste README
+    └── robustez.csv                                   # Tabela completa de robustez ao ruído
 ```

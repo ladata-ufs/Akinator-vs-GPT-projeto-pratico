@@ -28,7 +28,7 @@ from src.akinator_engine import (  # noqa: E402
     ranking_top_k,
 )
 
-DEFAULT_MATRIZ = REPO_ROOT / "processed" / "perguntas_matriz.json"
+DEFAULT_MATRIZ = REPO_ROOT / "data" / "processed" / "perguntas_matriz.json"
 
 
 def resposta_oraculo(pergunta: dict[str, Any], idx_docente: int) -> str:

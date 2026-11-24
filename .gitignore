@@ -1,10 +1,19 @@
-# Ambiente Python e caches
+# Ambiente Python, caches e variáveis locais
 .venv/
 venv/
 __pycache__/
 *.py[cod]
+*.egg-info/
 .pytest_cache/
 .ruff_cache/
+.env
+.env.*
+
+# Sistema operacional e editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
 
 # Materiais de referência e testes locais
 docs/
@@ -13,7 +22,7 @@ pyproject.toml
 uv.lock
 
 # Arquivos intermediários e roteiros auxiliares do experimento
-raw/sigaa_disciplinas_dcomp.json
+data/raw/sigaa_disciplinas_dcomp.json
 scripts/build_raw_csv.py
 scripts/gerar_dicas.py
 scripts/gerar_dicas_rag.py

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Gera a matriz de verossimilhança P(E | H) em processed/perguntas_matriz.json
-a partir dos dados brutos de docentes e disciplinas em raw/.
+"""Gera a matriz de verossimilhança P(E | H) em data/processed/perguntas_matriz.json
+a partir dos dados brutos de docentes e disciplinas em data/raw/.
 """
 
 from __future__ import annotations
@@ -14,9 +14,9 @@ from pathlib import Path
 from typing import Any, Callable
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-RAW_DOCENTES = REPO_ROOT / "raw" / "docentes_dcomp_ufs.csv"
-RAW_DISCIPLINAS = REPO_ROOT / "raw" / "disciplinas_dcomp_ufs.csv"
-OUT_MATRIZ = REPO_ROOT / "processed" / "perguntas_matriz.json"
+RAW_DOCENTES = REPO_ROOT / "data" / "raw" / "docentes_dcomp_ufs.csv"
+RAW_DISCIPLINAS = REPO_ROOT / "data" / "raw" / "disciplinas_dcomp_ufs.csv"
+OUT_MATRIZ = REPO_ROOT / "data" / "processed" / "perguntas_matriz.json"
 OUT_WEB_JS = REPO_ROOT / "web" / "matriz.js"
 
 RESPOSTAS_VALIDAS = ("sim", "nao", "nao_sei")
@@ -356,7 +356,7 @@ def construir_matriz(
     docentes_csv: Path = RAW_DOCENTES,
     disciplinas_csv: Path = RAW_DISCIPLINAS,
 ) -> dict[str, Any]:
-    """Gera o dicionário completo pronto para serializar em processed/perguntas_matriz.json."""
+    """Gera o dicionário completo pronto para serializar em data/processed/perguntas_matriz.json."""
     docentes, disciplinas_por_siape = carregar_dados_brutos(docentes_csv, disciplinas_csv)
     catalogo = montar_catalogo_perguntas()
 

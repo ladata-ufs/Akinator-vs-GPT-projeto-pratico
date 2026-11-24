@@ -20,7 +20,7 @@ from src.akinator_engine import (  # noqa: E402
     inicializar_priors, ranking_top_k,
 )
 
-MATRIZ = REPO_ROOT / "processed" / "perguntas_matriz.json"
+MATRIZ = REPO_ROOT / "data" / "processed" / "perguntas_matriz.json"
 SAIDA = REPO_ROOT / "results" / "robustez.csv"
 
 

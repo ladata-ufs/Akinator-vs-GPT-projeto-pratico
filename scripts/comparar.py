@@ -58,7 +58,7 @@ def gerar_svg(n: int, b5: float, b5_t3: float, bl: float, llm: float, destino: P
 
 
 def main() -> None:
-    matriz = carregar_matriz(REPO_ROOT / "processed" / "perguntas_matriz.json")
+    matriz = carregar_matriz(REPO_ROOT / "data" / "processed" / "perguntas_matriz.json")
     docs = matriz["docentes"]
     llm = json.loads((R / "llm_resultados.json").read_text(encoding="utf-8"))
     rng = random.Random(0)
