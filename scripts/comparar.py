@@ -6,10 +6,12 @@ Lê `results/llm_resultados.json` e gera `results/comparacao.csv` e `results/com
 from __future__ import annotations
 
 import csv
+import html
 import json
 import random
 import sys
 import unicodedata
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -38,23 +40,27 @@ def gerar_svg(n: int, b5: float, b5_t3: float, bl: float, llm: float, destino: P
     bars = [
         ("Bayes 5 perg. (Top-1)", b5, "#3b82f6"),
         ("Bayes 5 perg. (Top-3)", b5_t3, "#60a5fa"),
-        ("Bayes livre <=12 (Top-1)", bl, "#22c55e"),
+        ("Bayes livre (<= 12, Top-1)", bl, "#22c55e"),
         ("LLM n8n+RAG 5 dicas", llm, "#f59e0b"),
     ]
     lines = [
-        '<svg xmlns="http://www.w3.org/2000/svg" width="680" height="270" style="background:#0f172a;font-family:system-ui,sans-serif">',
-        f'<text x="20" y="32" fill="#f8fafc" font-size="16" font-weight="bold">Akinator Bayesiano vs LLM (n8n + GPT-5-mini + RAG) — Amostra n={n}</text>',
-        '<text x="20" y="52" fill="#94a3b8" font-size="11">Amostra inclui os 6 docentes mais difíceis para o Bayes em 5 perguntas + 4 aleatórios</text>',
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 270" width="680" height="270" font-family="system-ui, -apple-system, sans-serif">',
+        '<rect width="680" height="270" rx="8" fill="#0f172a"/>',
+        f'<text x="20" y="34" fill="#f8fafc" font-size="16" font-weight="bold">Akinator Bayesiano vs LLM (n8n + GPT-5-mini + RAG) — Amostra n={n}</text>',
+        '<text x="20" y="54" fill="#94a3b8" font-size="11">Amostra inclui os 6 docentes mais difíceis para o Bayes em 5 perguntas + 4 aleatórios</text>',
     ]
     for i, (label, val, col) in enumerate(bars):
-        y = 80 + i * 44
+        y = 82 + i * 44
         w = max(4, int(val * 3.8))
-        lines.append(f'<text x="20" y="{y+18}" fill="#e2e8f0" font-size="13">{label}</text>')
+        lines.append(f'<text x="20" y="{y+18}" fill="#e2e8f0" font-size="13">{html.escape(label)}</text>')
         lines.append(f'<rect x="210" y="{y+4}" width="380" height="20" rx="4" fill="#1e293b"/>')
         lines.append(f'<rect x="210" y="{y+4}" width="{w}" height="20" rx="4" fill="{col}"/>')
         lines.append(f'<text x="602" y="{y+19}" fill="#f8fafc" font-size="13" font-weight="bold">{val:.1f}%</text>')
     lines.append("</svg>")
-    destino.write_text("\n".join(lines), encoding="utf-8")
+    svg_text = "\n".join(lines)
+    ET.fromstring(svg_text)
+    destino.write_text(svg_text, encoding="utf-8")
 
 
 def main() -> None:
